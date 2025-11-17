@@ -17,6 +17,48 @@ const (
 	maxDependencyDepth = 100
 )
 
+// parseFlexibleTimestamp parses a timestamp from SQLite that may be in various formats.
+// It handles:
+// - Go's time.Time.String() format (e.g., "2025-11-07 21:40:45.70441 -0800 PST m=+0.003280543")
+// - SQLite DATETIME format
+// - RFC3339 format
+func parseFlexibleTimestamp(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, fmt.Errorf("empty timestamp string")
+	}
+
+	// Try Go's time.String() format first (handles old databases)
+	// This format includes optional monotonic clock reading after a space
+	// Example: "2025-11-07 21:40:45.70441 -0800 PST m=+0.003280543"
+	// Layout: "2006-01-02 15:04:05.999999999 -0700 MST"
+	layouts := []string{
+		"2006-01-02 15:04:05.999999999 -0700 MST",      // Full with nanoseconds
+		"2006-01-02 15:04:05.999999 -0700 MST",         // With microseconds
+		"2006-01-02 15:04:05 -0700 MST",                // Without fractional seconds
+		time.RFC3339Nano,                                // SQLite default
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999",                // Local time with nanoseconds
+		"2006-01-02 15:04:05",                          // SQLite DATETIME
+	}
+
+	// Strip monotonic clock reading if present (space followed by "m=")
+	if idx := strings.Index(s, " m="); idx > 0 {
+		s = s[:idx]
+	}
+
+	var lastErr error
+	for _, layout := range layouts {
+		t, err := time.Parse(layout, s)
+		if err == nil {
+			// Strip monotonic component for consistency
+			return t.Round(0), nil
+		}
+		lastErr = err
+	}
+
+	return time.Time{}, fmt.Errorf("failed to parse timestamp %q: %w", s, lastErr)
+}
+
 // AddDependency adds a dependency between issues with cycle prevention
 func (s *SQLiteStorage) AddDependency(ctx context.Context, dep *types.Dependency, actor string) error {
 	// Validate dependency type
@@ -651,12 +693,14 @@ func (s *SQLiteStorage) DetectCycles(ctx context.Context) ([][]*types.Issue, err
 func (s *SQLiteStorage) scanIssues(ctx context.Context, rows *sql.Rows) ([]*types.Issue, error) {
 	var issues []*types.Issue
 	var issueIDs []string
-	
+
 	// First pass: scan all issues
 	for rows.Next() {
 		var issue types.Issue
 		var contentHash sql.NullString
-		var closedAt sql.NullTime
+		var createdAt sql.NullString
+		var updatedAt sql.NullString
+		var closedAt sql.NullString
 		var estimatedMinutes sql.NullInt64
 		var assignee sql.NullString
 		var externalRef sql.NullString
@@ -666,7 +710,7 @@ func (s *SQLiteStorage) scanIssues(ctx context.Context, rows *sql.Rows) ([]*type
 			&issue.ID, &contentHash, &issue.Title, &issue.Description, &issue.Design,
 			&issue.AcceptanceCriteria, &issue.Notes, &issue.Status,
 			&issue.Priority, &issue.IssueType, &assignee, &estimatedMinutes,
-			&issue.CreatedAt, &issue.UpdatedAt, &closedAt, &externalRef, &sourceRepo,
+			&createdAt, &updatedAt, &closedAt, &externalRef, &sourceRepo,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan issue: %w", err)
@@ -675,9 +719,32 @@ func (s *SQLiteStorage) scanIssues(ctx context.Context, rows *sql.Rows) ([]*type
 		if contentHash.Valid {
 			issue.ContentHash = contentHash.String
 		}
-		if closedAt.Valid {
-			issue.ClosedAt = &closedAt.Time
+
+		// Parse timestamps flexibly to handle both old and new formats
+		if createdAt.Valid {
+			t, err := parseFlexibleTimestamp(createdAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse created_at for issue %s: %w", issue.ID, err)
+			}
+			issue.CreatedAt = t
 		}
+
+		if updatedAt.Valid {
+			t, err := parseFlexibleTimestamp(updatedAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse updated_at for issue %s: %w", issue.ID, err)
+			}
+			issue.UpdatedAt = t
+		}
+
+		if closedAt.Valid {
+			t, err := parseFlexibleTimestamp(closedAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse closed_at for issue %s: %w", issue.ID, err)
+			}
+			issue.ClosedAt = &t
+		}
+
 		if estimatedMinutes.Valid {
 			mins := int(estimatedMinutes.Int64)
 			issue.EstimatedMinutes = &mins
@@ -718,7 +785,9 @@ func (s *SQLiteStorage) scanIssuesWithDependencyType(ctx context.Context, rows *
 	for rows.Next() {
 		var issue types.Issue
 		var contentHash sql.NullString
-		var closedAt sql.NullTime
+		var createdAt sql.NullString
+		var updatedAt sql.NullString
+		var closedAt sql.NullString
 		var estimatedMinutes sql.NullInt64
 		var assignee sql.NullString
 		var externalRef sql.NullString
@@ -729,7 +798,7 @@ func (s *SQLiteStorage) scanIssuesWithDependencyType(ctx context.Context, rows *
 			&issue.ID, &contentHash, &issue.Title, &issue.Description, &issue.Design,
 			&issue.AcceptanceCriteria, &issue.Notes, &issue.Status,
 			&issue.Priority, &issue.IssueType, &assignee, &estimatedMinutes,
-			&issue.CreatedAt, &issue.UpdatedAt, &closedAt, &externalRef, &sourceRepo,
+			&createdAt, &updatedAt, &closedAt, &externalRef, &sourceRepo,
 			&depType,
 		)
 		if err != nil {
@@ -739,9 +808,32 @@ func (s *SQLiteStorage) scanIssuesWithDependencyType(ctx context.Context, rows *
 		if contentHash.Valid {
 			issue.ContentHash = contentHash.String
 		}
-		if closedAt.Valid {
-			issue.ClosedAt = &closedAt.Time
+
+		// Parse timestamps flexibly to handle both old and new formats
+		if createdAt.Valid {
+			t, err := parseFlexibleTimestamp(createdAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse created_at for issue %s: %w", issue.ID, err)
+			}
+			issue.CreatedAt = t
 		}
+
+		if updatedAt.Valid {
+			t, err := parseFlexibleTimestamp(updatedAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse updated_at for issue %s: %w", issue.ID, err)
+			}
+			issue.UpdatedAt = t
+		}
+
+		if closedAt.Valid {
+			t, err := parseFlexibleTimestamp(closedAt.String)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse closed_at for issue %s: %w", issue.ID, err)
+			}
+			issue.ClosedAt = &t
+		}
+
 		if estimatedMinutes.Valid {
 			mins := int(estimatedMinutes.Int64)
 			issue.EstimatedMinutes = &mins
