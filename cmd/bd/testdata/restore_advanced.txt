@@ -1,0 +1,65 @@
+# Test bd restore command for recovering deleted issues
+# Verifies restoring deleted issues and data preservation
+
+bd init --prefix task
+
+# Create an issue with full metadata
+bd create 'Valuable deleted task'
+cp stdout valuable_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" valuable_output.txt > valuable_id.txt'
+
+# Add rich metadata
+exec sh -c 'bd update $(cat valuable_id.txt) -d "This is important work that might get deleted"'
+stdout 'Updated'
+
+exec sh -c 'bd label add $(cat valuable_id.txt) "valuable"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat valuable_id.txt) "research"'
+stdout 'Added label'
+
+exec sh -c 'bd comments add $(cat valuable_id.txt) -a alice "Great idea for future"'
+stdout 'Added comment'
+
+# Create dependencies
+bd create 'Blocker'
+cp stdout blocker_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" blocker_output.txt > blocker_id.txt'
+
+exec sh -c 'bd dep add $(cat valuable_id.txt) $(cat blocker_id.txt)'
+stdout 'Added dependency'
+
+# Verify all data is present
+exec sh -c 'bd show $(cat valuable_id.txt)'
+stdout 'Valuable deleted'
+stdout 'valuable'
+stdout 'research'
+
+# Delete the issue
+exec sh -c 'bd delete $(cat valuable_id.txt)'
+stdout 'Deleted'
+
+# Confirm it's deleted
+! bd show $(cat valuable_id.txt)
+stderr 'not found\|deleted'
+
+# Restore from trash/history (if supported)
+exec sh -c 'bd restore $(cat valuable_id.txt)'
+stdout 'Restored\|restored'
+
+# Verify it's back
+exec sh -c 'bd show $(cat valuable_id.txt)'
+stdout 'Valuable deleted'
+
+# Verify all metadata survived
+exec sh -c 'bd show $(cat valuable_id.txt)'
+stdout 'valuable'
+stdout 'research'
+
+# Verify dependency is intact
+exec sh -c 'bd show $(cat valuable_id.txt)'
+stdout 'Dependencies'
+
+# Verify it appears in list again
+bd list
+stdout 'Valuable deleted'

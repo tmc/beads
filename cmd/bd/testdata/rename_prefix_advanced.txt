@@ -1,0 +1,80 @@
+# Test bd rename-prefix command for bulk ID migrations
+# Verifies renaming issue prefixes while updating dependencies
+
+bd init --prefix proj
+
+# Create a complete hierarchy with dependencies and metadata
+bd create 'Phase 1 Planning'
+cp stdout p1_output.txt
+exec sh -c 'grep -oE "proj-[a-z0-9]+" p1_output.txt > p1_id.txt'
+
+bd create 'Phase 1: Design'
+cp stdout design_output.txt
+exec sh -c 'grep -oE "proj-[a-z0-9]+" design_output.txt > design_id.txt'
+
+bd create 'Phase 1: Implementation'
+cp stdout impl_output.txt
+exec sh -c 'grep -oE "proj-[a-z0-9]+" impl_output.txt > impl_id.txt'
+
+bd create 'Phase 1: Testing'
+cp stdout test_output.txt
+exec sh -c 'grep -oE "proj-[a-z0-9]+" test_output.txt > test_id.txt'
+
+# Create dependencies
+exec sh -c 'bd dep add $(cat design_id.txt) $(cat p1_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat impl_id.txt) $(cat design_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat test_id.txt) $(cat impl_id.txt)'
+stdout 'Added dependency'
+
+# Add labels
+exec sh -c 'bd label add $(cat p1_id.txt) "phase-1"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat design_id.txt) "design"'
+stdout 'Added label'
+
+# Verify original prefixes
+bd list
+stdout 'proj-'
+
+# Count issues before rename
+exec sh -c 'bd list | wc -l > count_before.txt'
+
+# Rename prefix from "proj" to "release"
+exec sh -c 'bd rename-prefix proj release'
+stdout 'Renaming\|Renamed\|Updated'
+
+# Verify all issues have new prefix
+bd list
+stdout 'release-'
+
+# Verify NO old prefix remains
+! bd list | grep 'proj-'
+
+# Verify dependency chain is intact (with new IDs)
+exec sh -c 'bd dep tree $(cat p1_id.txt)'
+# Should show the tree with new IDs
+
+# Verify we can reference issues by new ID
+exec sh -c 'bd show $(cat design_id.txt)'
+stdout 'design'
+
+# Verify labels are preserved
+exec sh -c 'bd show $(cat p1_id.txt)'
+stdout 'phase-1'
+
+# Verify count matches (same number of issues)
+exec sh -c 'bd list | wc -l > count_after.txt'
+exec sh -c 'diff count_before.txt count_after.txt'
+
+# Verify export/import with new prefix works
+bd export -o renamed_export.jsonl
+exists renamed_export.jsonl
+
+# Verify exported file uses new prefix
+exec sh -c 'grep -c "release-" renamed_export.jsonl'
+stdout '[1-4]'

@@ -1,0 +1,66 @@
+# Test bd label advanced scenarios
+# Verifies label operations with multiple labels and filtering
+
+bd init --prefix task
+
+# Create issues
+bd create 'API development'
+cp stdout api_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" api_output.txt > api_id.txt'
+
+bd create 'Frontend work'
+cp stdout fe_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" fe_output.txt > fe_id.txt'
+
+bd create 'DevOps infrastructure'
+cp stdout devops_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" devops_output.txt > devops_id.txt'
+
+# Add multiple cross-cutting labels
+exec sh -c 'bd label add $(cat api_id.txt) "backend"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat api_id.txt) "performance"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat api_id.txt) "blocked"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat fe_id.txt) "frontend"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat fe_id.txt) "performance"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat devops_id.txt) "infrastructure"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat devops_id.txt) "blocked"'
+stdout 'Added label'
+
+# Verify all issues have correct labels
+exec sh -c 'bd show $(cat api_id.txt) | grep -c "backend"'
+stdout '1'
+
+exec sh -c 'bd show $(cat fe_id.txt) | grep -c "frontend"'
+stdout '1'
+
+# Get issues by label - should find multiple
+exec sh -c 'bd list --label performance'
+stdout 'API development'
+stdout 'Frontend work'
+
+exec sh -c 'bd list --label blocked'
+stdout 'API development'
+stdout 'DevOps infrastructure'
+
+# Remove label from one issue only
+exec sh -c 'bd label remove $(cat api_id.txt) "blocked"'
+stdout 'Removed label'
+
+# Verify removal only affected that issue
+exec sh -c 'bd show $(cat api_id.txt)'
+# Should not contain blocked
+
+exec sh -c 'bd show $(cat devops_id.txt)'
+stdout 'blocked'

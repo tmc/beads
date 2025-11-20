@@ -1,0 +1,58 @@
+# Test bd epic command for parent-child issue hierarchies
+# Verifies creating epic/parent-child relationships and querying hierarchy
+
+bd init --prefix task
+
+# Create an epic (parent issue)
+bd create -t epic 'Q4 Planning Initiative'
+cp stdout epic_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" epic_output.txt > epic_id.txt'
+
+# Create child issues under the epic
+bd create -t task 'Define OKRs'
+cp stdout child1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" child1_output.txt > child1_id.txt'
+
+bd create -t task 'Conduct planning meeting'
+cp stdout child2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" child2_output.txt > child2_id.txt'
+
+bd create -t task 'Communicate plan to team'
+cp stdout child3_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" child3_output.txt > child3_id.txt'
+
+# Establish parent-child relationships via dependencies (epic as parent)
+exec sh -c 'bd dep add $(cat child1_id.txt) $(cat epic_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat child2_id.txt) $(cat epic_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat child3_id.txt) $(cat epic_id.txt)'
+stdout 'Added dependency'
+
+# Verify epic shows all children as dependencies
+exec sh -c 'bd show $(cat epic_id.txt)'
+stdout 'Dependencies.*3'
+
+# Verify show of epic displays it as type epic
+exec sh -c 'bd show $(cat epic_id.txt)'
+stdout '[Ee]pic\|type.*[Ee]pic'
+
+# View dependency tree from epic perspective
+exec sh -c 'bd dep tree $(cat epic_id.txt)'
+stdout 'Define OKRs'
+stdout 'Conduct planning'
+stdout 'Communicate'
+
+# Close one child issue
+exec sh -c 'bd close $(cat child1_id.txt) "Completed"'
+stdout 'Closed'
+
+# Verify epic still tracks all children (both open and closed)
+exec sh -c 'bd show $(cat epic_id.txt)'
+stdout 'Dependencies'
+
+# Epic status should reflect children status (if implemented)
+exec sh -c 'bd epic status $(cat epic_id.txt)'
+# Should show breakdown of open vs closed children

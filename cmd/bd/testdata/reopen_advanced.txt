@@ -1,0 +1,68 @@
+# Test bd reopen command and status transitions
+# Verifies reopening closed issues and preserving issue history
+
+bd init --prefix task
+
+# Create an issue
+bd create 'Bug to investigate'
+cp stdout bug_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" bug_output.txt > bug_id.txt'
+
+# Add some metadata
+exec sh -c 'bd update $(cat bug_id.txt) -d "Critical issue affecting production"'
+stdout 'Updated issue'
+
+exec sh -c 'bd label add $(cat bug_id.txt) "critical"'
+stdout 'Added label'
+
+# Verify issue is open
+exec sh -c 'bd show $(cat bug_id.txt)'
+stdout 'Status.*[Oo]pen\|[Oo]pen'
+
+# Close the issue
+exec sh -c 'bd close $(cat bug_id.txt) "Deployed fix in v2.5"'
+stdout 'Closed issue'
+
+# Verify it's closed
+exec sh -c 'bd show $(cat bug_id.txt)'
+stdout '[Cc]losed'
+
+# Reopen the issue (via update or reopen command)
+exec sh -c 'bd update $(cat bug_id.txt) -s open'
+stdout 'Updated issue\|reopened'
+
+# Verify it's open again
+exec sh -c 'bd show $(cat bug_id.txt)'
+stdout '[Oo]pen'
+
+# Verify all metadata was preserved
+exec sh -c 'bd show $(cat bug_id.txt)'
+stdout 'critical'
+stdout 'Critical issue affecting production'
+
+# Test reopening multiple issues
+bd create 'Issue 2'
+cp stdout i2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" i2_output.txt > i2_id.txt'
+
+bd create 'Issue 3'
+cp stdout i3_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" i3_output.txt > i3_id.txt'
+
+# Close both
+exec sh -c 'bd close $(cat i2_id.txt) "Done"'
+stdout 'Closed'
+
+exec sh -c 'bd close $(cat i3_id.txt) "Done"'
+stdout 'Closed'
+
+# Reopen both
+exec sh -c 'bd update $(cat i2_id.txt) -s open'
+stdout 'Updated'
+
+exec sh -c 'bd update $(cat i3_id.txt) -s open'
+stdout 'Updated'
+
+# Verify both are open
+exec sh -c 'bd list | grep -E "Issue [23]"'
+stdout 'Issue'

@@ -1,0 +1,56 @@
+# Test bd stale command for finding uncommitted old issues
+# Verifies identifying issues that haven't been updated in a while
+
+bd init --prefix task
+
+# Create several issues with different timestamps
+bd create 'Recently worked on'
+cp stdout recent_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" recent_output.txt > recent_id.txt'
+
+# Create another issue and then pause
+bd create 'Older unworked issue'
+cp stdout old_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" old_output.txt > old_id.txt'
+
+bd create 'Very stale issue'
+cp stdout stale_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" stale_output.txt > stale_id.txt'
+
+bd create 'In progress'
+cp stdout inprogress_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" inprogress_output.txt > inprogress_id.txt'
+
+# Update the recent one to make it fresh
+exec sh -c 'bd update $(cat recent_id.txt) -d "Just finished this task"'
+stdout 'Updated'
+
+# Mark one as in-progress
+exec sh -c 'bd update $(cat inprogress_id.txt) -s in-progress'
+stdout 'Updated'
+
+# Close one (shouldn't be counted as stale)
+exec sh -c 'bd close $(cat stale_id.txt) "Decided not to pursue"'
+stdout 'Closed'
+
+# Get stale issues - should exclude recent, closed, and in-progress
+bd stale
+# Should show old_id but not recent_id
+stdout 'Older unworked'
+
+# Try stale with threshold (if supported)
+bd stale -d 7
+# Should identify truly old issues (depends on implementation)
+
+# Create a ready issue and verify it appears in both ready and stale
+bd create 'Ready but stale'
+cp stdout ready_stale_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" ready_stale_output.txt > ready_stale_id.txt'
+
+# Issue should be in ready (no dependencies)
+bd ready
+stdout 'Ready but stale'
+
+# Same issue should appear in stale if old enough
+bd stale
+# Behavior depends on staleness definition

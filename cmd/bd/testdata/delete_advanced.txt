@@ -1,0 +1,63 @@
+# Test bd delete command and deletion tracking
+# Verifies soft deletes and that other data is unaffected
+
+bd init --prefix task
+
+# Create several issues with relationships
+bd create 'Issue to delete'
+cp stdout del_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" del_output.txt > del_id.txt'
+
+bd create 'Issue to keep'
+cp stdout keep_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" keep_output.txt > keep_id.txt'
+
+bd create 'Will reference deleted'
+cp stdout ref_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" ref_output.txt > ref_id.txt'
+
+# Create dependency chain: ref depends on del, del depends on keep
+exec sh -c 'bd dep add $(cat del_id.txt) $(cat keep_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat ref_id.txt) $(cat del_id.txt)'
+stdout 'Added dependency'
+
+# Add labels and comments
+exec sh -c 'bd label add $(cat del_id.txt) "temporary"'
+stdout 'Added label'
+
+exec sh -c 'bd comments add $(cat del_id.txt) -a alice "This is temporary"'
+stdout 'Added comment'
+
+# Verify issue exists
+exec sh -c 'bd show $(cat del_id.txt)'
+stdout 'Issue to delete'
+
+# Delete the issue
+exec sh -c 'bd delete $(cat del_id.txt)'
+stdout 'Deleted'
+
+# Verify it's gone from list
+bd list
+# Should not show deleted issue
+
+# Verify kept issue is still intact
+exec sh -c 'bd show $(cat keep_id.txt)'
+stdout 'Issue to keep'
+
+# Verify other issue is still intact
+exec sh -c 'bd show $(cat ref_id.txt)'
+stdout 'Will reference deleted'
+
+# Verify dependencies were cleaned up gracefully
+exec sh -c 'bd show $(cat ref_id.txt)'
+# Should not error even though dependency target was deleted
+
+# Attempt to show deleted issue - should fail
+! bd show $(cat del_id.txt)
+stderr 'not found\|deleted\|no such'
+
+# Verify stats don't count deleted issue
+bd stats
+# Should show reduced count

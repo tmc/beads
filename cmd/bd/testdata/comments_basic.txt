@@ -1,0 +1,35 @@
+# Test bd comments command for issue discussions
+# Verifies adding and retrieving comments on issues
+
+bd init --prefix task
+
+# Create an issue to add comments to
+bd create 'Feature request'
+cp stdout issue_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" issue_output.txt > issue_id.txt'
+
+# Add comments by different users
+exec sh -c 'bd comments add $(cat issue_id.txt) -a alice "Great feature! This will improve workflow."'
+stdout 'Added comment\|Comment added'
+
+exec sh -c 'bd comments add $(cat issue_id.txt) -a bob "I agree. Can we prioritize this?"'
+stdout 'Added comment\|Comment added'
+
+exec sh -c 'bd comments add $(cat issue_id.txt) -a charlie "I have a question about implementation details."'
+stdout 'Added comment\|Comment added'
+
+# Verify comment count in show output
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'Comment'
+
+# List comments for the issue
+exec sh -c 'bd comments list $(cat issue_id.txt)'
+stdout 'alice'
+stdout 'bob'
+stdout 'charlie'
+
+# Verify comment content appears in list
+exec sh -c 'bd comments list $(cat issue_id.txt)'
+stdout 'Great feature'
+stdout 'prioritize'
+stdout 'implementation'

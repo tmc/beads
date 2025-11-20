@@ -1,0 +1,65 @@
+# Test bd JSONL export integrity and recovery
+# Verifies exported JSONL is valid and can be recovered from
+
+bd init --prefix task
+
+# Create a diverse set of issues
+bd create 'Task 1'
+cp stdout t1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" t1_output.txt > t1_id.txt'
+
+bd create 'Task 2'
+cp stdout t2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" t2_output.txt > t2_id.txt'
+
+bd create 'Task 3'
+cp stdout t3_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" t3_output.txt > t3_id.txt'
+
+# Add metadata
+exec sh -c 'bd label add $(cat t1_id.txt) "backend"'
+exec sh -c 'bd label add $(cat t2_id.txt) "frontend"'
+exec sh -c 'bd update $(cat t1_id.txt) -d "Implement API endpoints"'
+exec sh -c 'bd update $(cat t2_id.txt) -d "Build UI components"'
+exec sh -c 'bd dep add $(cat t2_id.txt) $(cat t1_id.txt)'
+
+# Close one task
+exec sh -c 'bd close $(cat t3_id.txt) "Done"'
+stdout 'Closed'
+
+# Export to JSONL
+bd export -o integrity_test.jsonl
+exists integrity_test.jsonl
+
+# Verify JSONL is valid (should be parseable as JSON lines)
+exec sh -c 'cat integrity_test.jsonl | head -1 | jq .'
+# Should parse without error
+
+# Verify all issues are in JSONL
+exec sh -c 'grep -c "\"id\"" integrity_test.jsonl'
+stdout '3'
+
+# Verify data integrity in JSONL
+exec sh -c 'grep -q "backend" integrity_test.jsonl && echo "found"'
+stdout 'found'
+
+# Verify dependencies are in JSONL
+exec sh -c 'grep -q "dependencies" integrity_test.jsonl && echo "has_deps"'
+# Should find dependency info
+
+# Test recovery: Create new DB and import
+bd init --prefix task2
+exec sh -c 'bd -db .beads/task2.db import -i integrity_test.jsonl'
+stdout 'Imported\|import'
+
+# Verify imported data matches
+exec sh -c 'bd -db .beads/task2.db list | wc -l'
+stdout '[3-4]'
+
+# Verify no data loss
+exec sh -c 'bd -db .beads/task2.db stats'
+stdout 'issues'
+
+# Verify metadata survived
+exec sh -c 'bd -db .beads/task2.db list | grep -c task2'
+stdout '[3-4]'

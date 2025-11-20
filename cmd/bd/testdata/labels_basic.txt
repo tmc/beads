@@ -1,0 +1,56 @@
+# Test bd label command for issue categorization
+# Verifies adding, removing, and filtering by labels
+
+bd init --prefix task
+
+# Create issues with different categories
+bd create 'Bug in login system'
+cp stdout bug_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" bug_output.txt > bug_id.txt'
+
+bd create 'Design system components'
+cp stdout design_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" design_output.txt > design_id.txt'
+
+bd create 'Write documentation'
+cp stdout doc_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" doc_output.txt > doc_id.txt'
+
+# Add labels to classify issues
+exec sh -c 'bd label add $(cat bug_id.txt) "bug"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat bug_id.txt) "critical"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat design_id.txt) "design"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat design_id.txt) "ui"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat doc_id.txt) "documentation"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat doc_id.txt) "low-priority"'
+stdout 'Added label'
+
+# Verify labels appear in show output
+exec sh -c 'bd show $(cat bug_id.txt)'
+stdout 'bug'
+stdout 'critical'
+
+# Filter issues by label (if supported)
+exec sh -c 'bd list --label bug'
+stdout 'Bug in login'
+
+exec sh -c 'bd list --label design'
+stdout 'Design system'
+
+# Remove a label
+exec sh -c 'bd label remove $(cat bug_id.txt) "critical"'
+stdout 'Removed label'
+
+# Verify label was removed
+exec sh -c 'bd show $(cat bug_id.txt)'
+stdout 'bug'

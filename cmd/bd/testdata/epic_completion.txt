@@ -1,0 +1,72 @@
+# Test bd epic completion tracking
+# Verifies epic status based on child issue completion
+
+bd init --prefix task
+
+# Create epic
+bd create -t epic 'Mobile App Launch'
+cp stdout epic_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" epic_output.txt > epic_id.txt'
+
+# Create child tasks
+bd create -t task 'Design mockups'
+cp stdout design_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" design_output.txt > design_id.txt'
+
+bd create -t task 'Implement frontend'
+cp stdout fe_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" fe_output.txt > fe_id.txt'
+
+bd create -t task 'Build backend API'
+cp stdout be_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" be_output.txt > be_id.txt'
+
+bd create -t task 'Test integration'
+cp stdout test_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" test_output.txt > test_id.txt'
+
+# Link all to epic
+exec sh -c 'bd dep add $(cat design_id.txt) $(cat epic_id.txt)'
+exec sh -c 'bd dep add $(cat fe_id.txt) $(cat epic_id.txt)'
+exec sh -c 'bd dep add $(cat be_id.txt) $(cat epic_id.txt)'
+exec sh -c 'bd dep add $(cat test_id.txt) $(cat epic_id.txt)'
+
+# Get initial epic status (all 4 children)
+exec sh -c 'bd epic status $(cat epic_id.txt)'
+stdout '0/4\|children.*4'
+
+# Complete design task
+exec sh -c 'bd close $(cat design_id.txt) "Approved by product"'
+stdout 'Closed'
+
+# Check progress
+exec sh -c 'bd epic status $(cat epic_id.txt)'
+stdout '1/4\|children.*4'
+
+# Complete frontend
+exec sh -c 'bd close $(cat fe_id.txt) "Ready for testing"'
+stdout 'Closed'
+
+# Check progress
+exec sh -c 'bd epic status $(cat epic_id.txt)'
+stdout '2/4'
+
+# Complete backend
+exec sh -c 'bd close $(cat be_id.txt) "APIs deployed"'
+stdout 'Closed'
+
+# Check progress
+exec sh -c 'bd epic status $(cat epic_id.txt)'
+stdout '3/4'
+
+# Complete testing
+exec sh -c 'bd close $(cat test_id.txt) "All tests passing"'
+stdout 'Closed'
+
+# Verify epic is now fully complete
+exec sh -c 'bd epic status $(cat epic_id.txt)'
+stdout '4/4'
+
+# Epic itself should still be open (for tracking) but all children done
+exec sh -c 'bd show $(cat epic_id.txt)'
+stdout '[Oo]pen\|[Cc]losed'

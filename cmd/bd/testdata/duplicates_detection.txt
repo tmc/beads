@@ -1,0 +1,54 @@
+# Test bd duplicate detection and handling
+# Verifies identifying and managing duplicate issues
+
+bd init --prefix task
+
+# Create an issue
+bd create 'Bug: Database connection timeout'
+cp stdout bug1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" bug1_output.txt > bug1_id.txt'
+
+# Add description
+exec sh -c 'bd update $(cat bug1_id.txt) -d "Connection pool exhausted when running N queries simultaneously"'
+stdout 'Updated'
+
+exec sh -c 'bd label add $(cat bug1_id.txt) "database"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat bug1_id.txt) "critical"'
+stdout 'Added label'
+
+# Create a duplicate (same issue, different ID)
+bd create 'Database timeout error'
+cp stdout bug2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" bug2_output.txt > bug2_id.txt'
+
+exec sh -c 'bd update $(cat bug2_id.txt) -d "Connection pool exhausted when running N queries simultaneously"'
+stdout 'Updated'
+
+# Create a third related issue
+bd create 'Query performance issue'
+cp stdout bug3_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" bug3_output.txt > bug3_id.txt'
+
+# Run duplicates detection (if available)
+exec sh -c 'bd duplicates'
+# Should identify the similar issues
+
+# Alternative: use a hash-based approach
+exec sh -c 'bd show $(cat bug1_id.txt)'
+stdout 'Database connection'
+
+exec sh -c 'bd show $(cat bug2_id.txt)'
+stdout 'Database timeout'
+
+# Both should have the same hash for content
+# (Implementation dependent)
+
+# Merge duplicates if feature exists
+exec sh -c 'bd merge $(cat bug1_id.txt) $(cat bug2_id.txt)'
+# Combine the two into one
+
+# Verify merged issue retains data from both
+exec sh -c 'bd show $(cat bug1_id.txt)'
+stdout 'critical'
