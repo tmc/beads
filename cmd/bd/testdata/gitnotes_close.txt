@@ -1,0 +1,55 @@
+# Test bd close with git notes backend
+# Verifies closing issues stored in git notes
+
+# Setup git repository
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Test" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize with git notes backend
+bd init --prefix test --backend gitnotes
+
+# Create issue
+bd create 'Issue to close'
+cp stdout issue.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
+
+# Close the issue with reason
+exec sh -c 'bd close $(cat issue_id.txt) --reason Fixed'
+stdout 'Closed test-'
+
+# Verify it's closed
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'closed'
+stdout 'Fixed'
+
+# Verify closed_at timestamp is set
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'Closed:'
+
+# Create another issue
+bd create 'Another issue to close'
+cp stdout issue2.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" issue2.txt > issue_id2.txt'
+
+# Close without reason
+exec sh -c 'bd close $(cat issue_id2.txt)'
+stdout 'Closed test-'
+
+# Verify status in git notes
+exec sh -c 'git notes --ref=refs/notes/beads/issues list | head -1 > note_ref.txt'
+exec sh -c 'git notes --ref=refs/notes/beads/issues show $(cat note_ref.txt)'
+stdout '"status":"closed"'
+
+# List should not show closed issues by default
+bd list
+! stdout 'Issue to close'
+! stdout 'Another issue to close'
+
+# List closed issues explicitly
+bd list --status closed
+stdout 'Issue to close'
+stdout 'Another issue to close'

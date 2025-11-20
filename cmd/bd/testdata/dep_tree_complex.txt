@@ -1,0 +1,51 @@
+# Test bd dep tree command with complex dependency graph
+# Creates a multi-level dependency tree and verifies tree traversal
+
+bd init --prefix task
+
+# Create a root issue (no dependencies)
+bd create 'Feature X'
+cp stdout root_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" root_output.txt > root_id.txt'
+
+# Create child issues that depend on root
+bd create 'Implement feature'
+cp stdout child1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" child1_output.txt > child1_id.txt'
+
+bd create 'Write tests'
+cp stdout child2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" child2_output.txt > child2_id.txt'
+
+# Create grandchild issues
+bd create 'Code review'
+cp stdout grandchild_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" grandchild_output.txt > grandchild_id.txt'
+
+# Build the dependency tree:
+#   Feature X (root)
+#   ├── Implement feature (child1 depends on root)
+#   ├── Write tests (child2 depends on root)
+#   └── Code review (grandchild depends on child1)
+
+exec sh -c 'bd dep add $(cat child1_id.txt) $(cat root_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat child2_id.txt) $(cat root_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat grandchild_id.txt) $(cat child1_id.txt)'
+stdout 'Added dependency'
+
+# Test: show tree for root (should show both children)
+exec sh -c 'bd dep tree $(cat root_id.txt)'
+stdout 'Implement feature'
+stdout 'Write tests'
+
+# Test: show tree for child1 (should show grandchild)
+exec sh -c 'bd dep tree $(cat child1_id.txt)'
+stdout 'Code review'
+
+# Test: show tree for leaf node (should have no dependents)
+exec sh -c 'bd dep tree $(cat grandchild_id.txt)'
+# Just verify it doesn't error out

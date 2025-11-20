@@ -1,0 +1,63 @@
+# Test git notes sync/push/pull
+# Verifies git notes are properly synced with remotes
+
+# Setup first repository
+exec git init repo1
+cd repo1
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Repo 1" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize beads with git notes
+bd init --prefix test --backend gitnotes
+
+# Create issue in repo1
+bd create 'Shared issue from repo1'
+cp stdout issue.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
+
+# Setup bare remote repository
+cd ..
+exec git init --bare remote.git
+
+# Add remote and push
+cd repo1
+exec git remote add origin ../remote.git
+exec git push -u origin main
+
+# Push git notes to remote
+exec git push origin refs/notes/beads/issues:refs/notes/beads/issues
+
+# Clone to second repository
+cd ..
+exec git clone remote.git repo2
+cd repo2
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+
+# Fetch git notes
+exec git fetch origin refs/notes/beads/issues:refs/notes/beads/issues
+
+# Initialize beads (should detect existing notes)
+bd init --prefix test --backend gitnotes
+
+# Verify issue from repo1 is visible
+bd list
+stdout 'Shared issue from repo1'
+
+# Create issue in repo2
+bd create 'Issue from repo2'
+
+# Push notes from repo2
+exec git push origin refs/notes/beads/issues:refs/notes/beads/issues
+
+# Back to repo1, pull notes
+cd ../repo1
+exec git fetch origin refs/notes/beads/issues:refs/notes/beads/issues
+
+# Verify both issues visible
+bd list
+stdout 'Shared issue from repo1'
+stdout 'Issue from repo2'

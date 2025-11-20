@@ -1,0 +1,35 @@
+# Test bd handling of special characters in issue fields
+# Verifies correct escaping and handling of special characters
+
+bd init --prefix task
+
+# Issue with quotes and special characters
+bd create 'Task with "quotes" and \\backslashes'
+cp stdout special_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" special_output.txt > special_id.txt'
+
+# Verify special characters are preserved
+exec sh -c 'bd show $(cat special_id.txt)'
+stdout 'quotes'
+
+# Issue with newlines in description (if supported)
+exec sh -c 'bd update $(cat special_id.txt) -d "Line 1\nLine 2"'
+# Should handle newlines gracefully
+
+# Issue with very long title
+bd create 'This is a very long issue title that contains many words and should still be handled correctly by the system without truncation or errors when displayed or stored in the database'
+cp stdout long_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" long_output.txt > long_id.txt'
+
+# Verify it's stored correctly
+exec sh -c 'bd show $(cat long_id.txt)'
+stdout 'very long'
+
+# Issue with Unicode characters
+bd create 'Task with émojis 🎯 and ñiño'
+cp stdout unicode_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" unicode_output.txt > unicode_id.txt'
+
+# Verify unicode is preserved
+exec sh -c 'bd show $(cat unicode_id.txt)'
+stdout 'Task with'

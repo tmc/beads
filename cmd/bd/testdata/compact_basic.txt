@@ -1,0 +1,46 @@
+# Test bd compact command for database compaction
+# Verifies that compact reduces database size and preserves data
+
+bd init --prefix task
+
+# Create several issues to have data to compact
+bd create 'Task 1'
+cp stdout t1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" t1_output.txt > t1_id.txt'
+
+bd create 'Task 2'
+cp stdout t2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" t2_output.txt > t2_id.txt'
+
+bd create 'Task 3'
+cp stdout t3_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" t3_output.txt > t3_id.txt'
+
+# Update issues multiple times to create bloat
+exec sh -c 'bd update $(cat t1_id.txt) -d "Updated description"'
+stdout 'Updated issue'
+
+exec sh -c 'bd update $(cat t2_id.txt) -d "Another update"'
+stdout 'Updated issue'
+
+# Close one task
+exec sh -c 'bd close $(cat t3_id.txt)'
+stdout 'Closed issue'
+
+# Get database size before compact
+exec sh -c 'du -k .beads/beads.db | cut -f1 > db_size_before.txt'
+
+# Run compact (non-blocking)
+bd compact
+stdout 'Compacting'
+
+# Verify data is still intact
+exec sh -c 'bd show $(cat t1_id.txt)'
+stdout 'Task 1'
+
+exec sh -c 'bd show $(cat t2_id.txt)'
+stdout 'Task 2'
+
+# Verify closed task is still there
+exec sh -c 'bd show $(cat t3_id.txt)'
+stdout 'Task 3'

@@ -1,0 +1,57 @@
+# Test git notes transaction semantics
+# Verifies atomic operations using git update-ref
+
+# Setup git repository
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Test" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize with git notes backend
+bd init --prefix test --backend gitnotes
+
+# Record initial reflog state
+exec git reflog show refs/notes/beads/issues --format='%H' --all
+cp stdout initial_reflog.txt
+
+# Create multiple issues (should be atomic)
+bd create 'Issue 1'
+bd create 'Issue 2'
+bd create 'Issue 3'
+
+# Verify all three were created
+bd list
+stdout 'Issue 1'
+stdout 'Issue 2'
+stdout 'Issue 3'
+
+# Check reflog for atomic commits
+exec git reflog show refs/notes/beads/issues --format='%H' --all
+cp stdout after_create_reflog.txt
+
+# Update multiple fields atomically
+cp stdout issue1.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" issue1.txt | head -1 > issue_id.txt'
+exec sh -c 'bd update $(cat issue_id.txt) --status in_progress --priority P0 --type bug'
+
+# Verify all fields updated together
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'in_progress'
+stdout 'P0'
+stdout 'bug'
+
+# Test concurrent-safe operations
+# Create issue, record commit hash, verify no dirty state
+bd create 'Concurrent test'
+exec git rev-parse refs/notes/beads/issues
+cp stdout commit_hash.txt
+
+# Verify clean state (no uncommitted changes)
+exec git status --porcelain
+! stdout '.'
+
+# Verify reflog shows proper commit chain
+exec git reflog show refs/notes/beads/issues --format='%H %gs' --all
+stdout 'refs/notes/beads/issues'

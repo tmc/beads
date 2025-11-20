@@ -1,0 +1,39 @@
+# Test bd create with git notes backend
+# Verifies issue creation is stored in git notes
+
+# Setup git repository
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Test" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize with git notes backend
+bd init --prefix test --backend gitnotes
+
+# Create an issue
+bd create 'First issue with git notes'
+stdout 'Created issue:'
+stdout 'test-'
+
+# Capture the issue ID
+cp stdout issue.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
+
+# Verify issue is stored in git notes
+exec sh -c 'git notes --ref=refs/notes/beads/issues list | head -1 > note_ref.txt'
+exists note_ref.txt
+
+# Verify we can read the issue from git notes
+exec sh -c 'git notes --ref=refs/notes/beads/issues show $(cat note_ref.txt)'
+stdout 'First issue with git notes'
+stdout 'test-'
+
+# Create multiple issues
+bd create 'Second issue'
+bd create 'Third issue'
+
+# List all notes in beads namespace
+exec git notes --ref=refs/notes/beads/issues list
+stdout '.'

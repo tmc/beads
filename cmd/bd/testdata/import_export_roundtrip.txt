@@ -1,0 +1,46 @@
+# Test bd import/export roundtrip
+# Verifies that exported data can be imported without loss
+
+bd init --prefix task
+
+# Create issues with various fields
+bd create -t task -p 1 'Feature implementation'
+cp stdout f1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" f1_output.txt > f1_id.txt'
+
+bd create -t bug -p 2 'Critical bug'
+cp stdout f2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" f2_output.txt > f2_id.txt'
+
+bd create -t doc -p 3 'Documentation'
+cp stdout f3_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" f3_output.txt > f3_id.txt'
+
+# Add descriptions and notes
+exec sh -c 'bd update $(cat f1_id.txt) -d "Implement the core feature with all edge cases"'
+exec sh -c 'bd update $(cat f2_id.txt) -d "Fix critical performance issue" -n "Affects all users"'
+
+# Create labels
+exec sh -c 'bd label add $(cat f1_id.txt) "feature" "high-impact"'
+exec sh -c 'bd label add $(cat f2_id.txt) "bug" "critical"'
+
+# Create dependencies
+exec sh -c 'bd dep add $(cat f2_id.txt) $(cat f1_id.txt)'
+
+# Export to JSONL
+bd export -o export_rt.jsonl
+exists export_rt.jsonl
+
+# Initialize new database
+bd init --prefix task2
+exec sh -c 'bd -db .beads/task2.db import -i export_rt.jsonl'
+
+# Verify imported data integrity
+exec sh -c 'bd -db .beads/task2.db list'
+stdout 'Feature implementation'
+stdout 'Critical bug'
+stdout 'Documentation'
+
+# Verify issue details are preserved
+exec sh -c 'bd -db .beads/task2.db show task2-'
+stdout 'implementation'

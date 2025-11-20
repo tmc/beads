@@ -1,0 +1,48 @@
+# Test bd dep remove command with multiple dependencies
+# Verifies removal of specific dependencies without affecting others
+
+bd init --prefix task
+
+# Create parent issue
+bd create 'Main task'
+cp stdout parent_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" parent_output.txt > parent_id.txt'
+
+# Create multiple dependency targets
+bd create 'Dependency 1'
+cp stdout dep1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" dep1_output.txt > dep1_id.txt'
+
+bd create 'Dependency 2'
+cp stdout dep2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" dep2_output.txt > dep2_id.txt'
+
+bd create 'Dependency 3'
+cp stdout dep3_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" dep3_output.txt > dep3_id.txt'
+
+# Add all dependencies
+exec sh -c 'bd dep add $(cat parent_id.txt) $(cat dep1_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat parent_id.txt) $(cat dep2_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat parent_id.txt) $(cat dep3_id.txt)'
+stdout 'Added dependency'
+
+# Verify all three are present
+exec sh -c 'bd show $(cat parent_id.txt)'
+stdout 'Dependencies \(3\)'
+
+# Remove middle dependency
+exec sh -c 'bd dep remove $(cat parent_id.txt) $(cat dep2_id.txt)'
+stdout 'Removed dependency'
+
+# Verify only two remain
+exec sh -c 'bd show $(cat parent_id.txt)'
+stdout 'Dependencies \(2\)'
+
+# Verify the correct ones remain (should not contain dep2)
+exec sh -c 'bd show $(cat parent_id.txt) | grep -c Dependency'
+stdout '2'

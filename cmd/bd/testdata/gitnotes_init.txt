@@ -1,0 +1,27 @@
+# Test bd init with git notes backend
+# This test verifies git notes storage initialization
+
+# Initialize git repository first (required for git notes)
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+
+# Create initial commit (git notes need at least one commit)
+exec sh -c 'echo "# Test Repo" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize beads with git notes backend
+bd init --prefix test --backend gitnotes
+stdout 'initialized successfully'
+
+# Verify git notes refs were created
+exec git for-each-ref refs/notes/beads
+stdout 'refs/notes/beads'
+
+# Verify metadata files were created
+exists .beads/metadata.json
+exists .beads/config.json
+
+# Verify git notes namespace contains issues ref
+exec git show-ref refs/notes/beads/issues

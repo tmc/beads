@@ -1,0 +1,44 @@
+# Test bd list with git notes backend
+# Verifies listing issues from git notes storage
+
+# Setup git repository
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Test" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize with git notes backend
+bd init --prefix test --backend gitnotes
+
+# Create several issues
+bd create 'First issue'
+bd create 'Second issue'
+bd create 'Third issue'
+
+# List all issues
+bd list
+stdout 'First issue'
+stdout 'Second issue'
+stdout 'Third issue'
+
+# Verify all three issues appear
+stdout 'test-'
+
+# List should show open issues by default
+bd list --status open
+stdout 'First issue'
+stdout 'Second issue'
+stdout 'Third issue'
+
+# Create issue with specific priority
+bd create 'High priority bug' --priority P0 --type bug
+
+# List by priority
+bd list --priority P0
+stdout 'High priority bug'
+
+# List by type
+bd list --type bug
+stdout 'High priority bug'

@@ -1,0 +1,34 @@
+# Test bd import with collision detection
+# Verifies graceful handling of duplicate IDs during import
+
+bd init --prefix task
+
+# Create initial issue
+bd create 'Original issue'
+cp stdout orig_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" orig_output.txt > orig_id.txt'
+
+# Create another issue for reference
+bd create 'Reference issue'
+
+# Export current state
+bd export -o export_base.jsonl
+exists export_base.jsonl
+
+# Create a modified export file with collision (same ID, different content)
+# This simulates trying to import a file with ID already in the database
+exec sh -c 'cat export_base.jsonl | sed "s/Original/Modified/" > export_collision.jsonl'
+
+# Try to import with collision - should detect and handle it
+# The exact behavior depends on import mode
+bd import -i export_collision.jsonl --dry-run
+# Just verify it doesn't crash on dry-run
+
+# Now do actual import without dry-run
+# This tests collision resolution
+bd import -i export_collision.jsonl
+# Command should complete (may rename or skip depending on implementation)
+
+# Verify database is still consistent
+bd list
+stdout 'Reference issue'

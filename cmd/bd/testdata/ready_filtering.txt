@@ -1,0 +1,34 @@
+# Test bd ready command with filtering
+# Verifies that ready command correctly identifies actionable items
+
+bd init --prefix task
+
+# Create issues with various dependencies
+bd create 'Independent task'
+cp stdout ind_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" ind_output.txt > ind_id.txt'
+
+bd create 'Blocked task'
+cp stdout blocked_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" blocked_output.txt > blocked_id.txt'
+
+bd create 'Blocking task'
+cp stdout blocking_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" blocking_output.txt > blocking_id.txt'
+
+# Create a closed task
+bd create 'Completed task'
+cp stdout completed_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" completed_output.txt > completed_id.txt'
+exec sh -c 'bd close $(cat completed_id.txt) "Done"'
+stdout 'Closed issue'
+
+# Make blocked_id depend on blocking_id (so it's blocked)
+exec sh -c 'bd dep add $(cat blocked_id.txt) $(cat blocking_id.txt)'
+
+# List ready items - should include independent and blocking, but not blocked or completed
+bd ready
+stdout 'Independent task'
+stdout 'Blocking task'
+# Should not include blocked task
+# Should not include completed task

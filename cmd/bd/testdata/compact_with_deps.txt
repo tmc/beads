@@ -1,0 +1,44 @@
+# Test bd compact with complex dependency graphs
+# Verifies compaction preserves dependency relationships
+
+bd init --prefix task
+
+# Create issues with dependencies
+bd create 'Parent task'
+cp stdout parent_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" parent_output.txt > parent_id.txt'
+
+bd create 'Child task'
+cp stdout child_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" child_output.txt > child_id.txt'
+
+bd create 'Grandchild task'
+cp stdout grand_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" grand_output.txt > grand_id.txt'
+
+# Create dependency chain
+exec sh -c 'bd dep add $(cat child_id.txt) $(cat parent_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat grand_id.txt) $(cat child_id.txt)'
+stdout 'Added dependency'
+
+# Verify dependencies exist
+exec sh -c 'bd show $(cat child_id.txt)'
+stdout 'Dependencies'
+
+# Run compact
+bd compact
+stdout 'Compacting'
+
+# Verify dependencies are preserved
+exec sh -c 'bd show $(cat child_id.txt)'
+stdout 'Dependencies'
+
+exec sh -c 'bd show $(cat grand_id.txt)'
+stdout 'Dependencies'
+
+# Verify tree still works
+exec sh -c 'bd dep tree $(cat parent_id.txt)'
+stdout 'Child task'
+stdout 'Grandchild task'

@@ -1,0 +1,33 @@
+# Test bd error handling for invalid issue IDs
+# Verifies proper error messages when operations reference non-existent issues
+
+bd init --prefix task
+
+# Try to show non-existent issue
+! bd show task-nonexistent
+stderr 'not found\|no such\|invalid'
+
+# Try to update non-existent issue
+! bd update task-nonexistent -d "description"
+stderr 'not found\|no such\|invalid'
+
+# Try to close non-existent issue
+! bd close task-nonexistent
+stderr 'not found\|no such\|invalid'
+
+# Try to add dependency with invalid issue
+! bd dep add task-nonexistent task-another
+stderr 'not found\|no such\|invalid'
+
+# Create a valid issue
+bd create 'Valid issue'
+cp stdout valid_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" valid_output.txt > valid_id.txt'
+
+# Try to add dependency with one invalid issue
+! exec sh -c 'bd dep add $(cat valid_id.txt) task-invalid'
+stderr 'not found\|no such\|invalid'
+
+# Verify valid issue is still intact
+exec sh -c 'bd show $(cat valid_id.txt)'
+stdout 'Valid issue'

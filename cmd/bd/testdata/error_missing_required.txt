@@ -1,0 +1,36 @@
+# Test bd error handling for missing required fields
+# Verifies that commands fail gracefully with appropriate error messages
+
+bd init --prefix task
+
+# Create with missing title (required)
+! bd create ''
+stderr 'title\|required\|empty'
+
+# Create with invalid priority (should be integer)
+! bd create -p invalid 'Task'
+stderr 'priority\|integer\|invalid'
+
+# Create with invalid type
+! bd create -t 'not-a-type' 'Task'
+stderr 'type\|invalid\|unknown'
+
+# Try operations that require an issue ID
+! bd show
+stderr 'required\|argument\|missing'
+
+! bd update
+stderr 'required\|argument\|missing'
+
+! bd close
+stderr 'required\|argument\|missing'
+
+! bd label add
+stderr 'required\|argument\|missing'
+
+! bd dep add
+stderr 'required\|argument\|missing'
+
+# Verify basic operations still work
+bd create 'Valid task'
+stdout 'Created issue'

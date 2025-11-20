@@ -1,0 +1,44 @@
+# Test bd export preserves labels and dependencies
+# Verifies that exported JSONL includes all issue metadata
+
+bd init --prefix task
+
+# Create issues
+bd create 'Main feature'
+cp stdout main_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" main_output.txt > main_id.txt'
+
+bd create 'Subtask'
+cp stdout sub_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" sub_output.txt > sub_id.txt'
+
+# Add labels to issues
+exec sh -c 'bd label add $(cat main_id.txt) "feature" "ui"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat sub_id.txt) "subtask" "urgent"'
+stdout 'Added label'
+
+# Create dependency relationship
+exec sh -c 'bd dep add $(cat sub_id.txt) $(cat main_id.txt)'
+stdout 'Added dependency'
+
+# Export
+bd export -o export_full.jsonl
+exists export_full.jsonl
+
+# Verify exported file contains label and dependency information
+exec sh -c 'cat export_full.jsonl | grep -q "feature"'
+# Label should be in exported data
+
+exec sh -c 'cat export_full.jsonl | grep -q "ui"'
+# Should contain the label
+
+# Import into new database to verify round-trip
+bd init --prefix task2
+exec sh -c 'bd -db .beads/task2.db import -i export_full.jsonl'
+
+# Verify labels were imported
+exec sh -c 'bd -db .beads/task2.db list'
+stdout 'Main feature'
+stdout 'Subtask'

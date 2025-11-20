@@ -1,0 +1,57 @@
+# Test bd handling of concurrent-like updates
+# Verifies last-write-wins semantics and consistency
+
+bd init --prefix task
+
+# Create an issue
+bd create 'Concurrent test'
+cp stdout concurrent_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" concurrent_output.txt > concurrent_id.txt'
+
+# Perform multiple rapid updates
+exec sh -c 'bd update $(cat concurrent_id.txt) -d "Update 1"'
+stdout 'Updated issue'
+
+exec sh -c 'bd update $(cat concurrent_id.txt) -d "Update 2"'
+stdout 'Updated issue'
+
+exec sh -c 'bd update $(cat concurrent_id.txt) -d "Update 3"'
+stdout 'Updated issue'
+
+# Final state should reflect last update
+exec sh -c 'bd show $(cat concurrent_id.txt)'
+stdout 'Update 3'
+
+# Add multiple labels rapidly
+exec sh -c 'bd label add $(cat concurrent_id.txt) "label1"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat concurrent_id.txt) "label2"'
+stdout 'Added label'
+
+exec sh -c 'bd label add $(cat concurrent_id.txt) "label1"'
+# Adding same label again - should be idempotent
+
+# Verify both labels are present
+exec sh -c 'bd show $(cat concurrent_id.txt)'
+stdout 'label1'
+stdout 'label2'
+
+# Multiple dependency additions
+bd create 'Dep 1'
+cp stdout d1_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" d1_output.txt > d1_id.txt'
+
+bd create 'Dep 2'
+cp stdout d2_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" d2_output.txt > d2_id.txt'
+
+exec sh -c 'bd dep add $(cat concurrent_id.txt) $(cat d1_id.txt)'
+stdout 'Added dependency'
+
+exec sh -c 'bd dep add $(cat concurrent_id.txt) $(cat d2_id.txt)'
+stdout 'Added dependency'
+
+# Both dependencies should be present
+exec sh -c 'bd show $(cat concurrent_id.txt)'
+stdout 'Dependencies \(2\)'

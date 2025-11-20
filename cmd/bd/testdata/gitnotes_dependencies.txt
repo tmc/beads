@@ -1,0 +1,50 @@
+# Test bd dependency management with git notes backend
+# Verifies dependency tracking in git notes storage
+
+# Setup git repository
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Test" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize with git notes backend
+bd init --prefix test --backend gitnotes
+
+# Create parent issue
+bd create 'Parent issue'
+cp stdout parent.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" parent.txt > parent_id.txt'
+
+# Create child issue
+bd create 'Child issue'
+cp stdout child.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" child.txt > child_id.txt'
+
+# Add dependency
+exec sh -c 'bd dep add $(cat child_id.txt) $(cat parent_id.txt)'
+stdout 'Added dependency'
+
+# Verify dependency in show command
+exec sh -c 'bd show $(cat child_id.txt)'
+stdout 'Depends on'
+exec sh -c 'cat parent_id.txt'
+stdout 'test-'
+
+# List dependencies
+exec sh -c 'bd dep tree $(cat child_id.txt)'
+exec sh -c 'cat parent_id.txt'
+stdout 'test-'
+
+# Verify dependency stored in git notes
+exec sh -c 'git notes --ref=refs/notes/beads/graph show $(cat child_id.txt) 2>/dev/null || git notes --ref=refs/notes/beads/issues show $(git notes --ref=refs/notes/beads/issues list | grep -m1 .)'
+stdout 'test-'
+
+# Remove dependency
+exec sh -c 'bd dep remove $(cat child_id.txt) $(cat parent_id.txt)'
+stdout 'Removed dependency'
+
+# Verify dependency removed
+exec sh -c 'bd show $(cat child_id.txt)'
+! exec sh -c 'bd show $(cat child_id.txt) | grep "Depends on"'

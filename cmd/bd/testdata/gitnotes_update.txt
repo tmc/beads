@@ -1,0 +1,57 @@
+# Test bd update with git notes backend
+# Verifies updating issues stored in git notes
+
+# Setup git repository
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Test" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize with git notes backend
+bd init --prefix test --backend gitnotes
+
+# Create issue
+bd create 'Issue to update'
+cp stdout issue.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
+
+# Update status
+exec sh -c 'bd update $(cat issue_id.txt) --status in_progress'
+stdout 'Updated issue:'
+
+# Verify status updated
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'in_progress'
+
+# Update priority
+exec sh -c 'bd update $(cat issue_id.txt) --priority P0'
+stdout 'Updated issue:'
+
+# Verify priority updated
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'P0'
+
+# Update type
+exec sh -c 'bd update $(cat issue_id.txt) --type bug'
+stdout 'Updated issue:'
+
+# Verify type updated
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'bug'
+
+# Update description
+exec sh -c 'bd update $(cat issue_id.txt) --description "Updated description"'
+
+# Verify description updated
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'Updated description'
+
+# Verify git notes was modified
+exec sh -c 'git notes --ref=refs/notes/beads/issues list | head -1 > note_ref.txt'
+exec sh -c 'git notes --ref=refs/notes/beads/issues show $(cat note_ref.txt)'
+stdout '"status":"in_progress"'
+stdout '"priority":"P0"'
+stdout '"type":"bug"'
+stdout 'Updated description'

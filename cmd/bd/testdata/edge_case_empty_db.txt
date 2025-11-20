@@ -1,0 +1,32 @@
+# Test bd operations on empty database
+# Verifies graceful behavior when database has no issues
+
+bd init --prefix task
+
+# List empty database
+bd list
+# Should complete without error, no output expected
+
+# Ready on empty database
+bd ready
+# Should complete without error
+
+# Stats on empty database
+bd stats
+stdout 'issues\|statistics'
+
+# Attempt to show from empty database
+! bd show task-anything
+stderr 'not found\|no such'
+
+# Compact empty database
+bd compact
+# Should complete without error
+
+# Create first issue
+bd create 'First issue'
+stdout 'Created issue'
+
+# Verify it appears in list
+bd list
+stdout 'First issue'

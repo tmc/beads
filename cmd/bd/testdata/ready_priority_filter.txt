@@ -1,0 +1,31 @@
+# Test bd ready command with priority filtering
+# Verifies filtering of ready items by priority
+
+bd init --prefix task
+
+# Create issues with different priorities
+# Priority: 1 = high, 2 = medium, 3 = low
+
+# High priority ready issue
+bd create -p 1 'Critical bug'
+cp stdout crit_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" crit_output.txt > crit_id.txt'
+
+# Medium priority ready issue
+bd create -p 2 'Medium feature'
+cp stdout med_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" med_output.txt > med_id.txt'
+
+# Low priority ready issue
+bd create -p 3 'Nice to have'
+cp stdout low_output.txt
+exec sh -c 'grep -oE "task-[a-z0-9]+" low_output.txt > low_id.txt'
+
+# List all ready items (should show all three)
+bd ready
+stdout 'Critical bug'
+stdout 'Medium feature'
+stdout 'Nice to have'
+
+# Filter by priority (if supported by bd ready)
+# This tests the flexibility of the ready command

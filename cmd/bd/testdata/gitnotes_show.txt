@@ -1,0 +1,42 @@
+# Test bd show with git notes backend
+# Verifies retrieving issue details from git notes
+
+# Setup git repository
+exec git init
+exec git config user.name 'Test User'
+exec git config user.email 'test@example.com'
+exec sh -c 'echo "# Test" > README.md'
+exec git add README.md
+exec git commit -m 'Initial commit'
+
+# Initialize with git notes backend
+bd init --prefix test --backend gitnotes
+
+# Create issue with full metadata
+bd create 'Test issue for show command' --priority P1 --type feature
+cp stdout issue.txt
+exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
+
+# Show the issue
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'Test issue for show command'
+stdout 'Status:'
+stdout 'open'
+stdout 'Priority:'
+stdout 'P1'
+stdout 'Type:'
+stdout 'feature'
+
+# Add description
+exec sh -c 'bd update $(cat issue_id.txt) --description "This is a test description"'
+
+# Verify description appears in show
+exec sh -c 'bd show $(cat issue_id.txt)'
+stdout 'This is a test description'
+
+# Verify git notes contains the data
+exec sh -c 'git notes --ref=refs/notes/beads/issues list | head -1 > note_ref.txt'
+exec sh -c 'git notes --ref=refs/notes/beads/issues show $(cat note_ref.txt)'
+stdout 'Test issue for show command'
+stdout '"priority":"P1"'
+stdout '"type":"feature"'
