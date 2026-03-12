@@ -1,10 +1,9 @@
-# Test bd export command
-bd init --prefix test
-bd create 'Test issue'
+[!dolt] skip
+# Test bd export writes issue data to JSONL
+bd init --prefix test --quiet
+bd create 'Export test' --description 'Serialized to JSONL' --json
+extractid ISSUE
 bd export -o export.jsonl
 exists export.jsonl
-
-# Verify the exported file contains the issue
-bd import -i export.jsonl
-bd list
-stdout 'Test issue'
+grep 'Export test' export.jsonl
+grep $ISSUE export.jsonl

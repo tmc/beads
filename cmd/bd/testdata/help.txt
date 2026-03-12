@@ -1,7 +1,15 @@
-# Test bd help command
+# Test bd help output against the current command surface
 bd help
 stdout 'Usage:'
-stdout 'Available Commands:'
+stdout 'Working With Issues:'
+stdout 'Views & Reports:'
+stdout 'Sync & Data:'
 stdout 'create'
-stdout 'list'
-stdout 'show'
+stdout 'ready'
+stdout 'version'
+
+bd create --help
+stdout 'Create a new issue'
+stdout '--type'
+stdout '--priority'
+stdout '--description'

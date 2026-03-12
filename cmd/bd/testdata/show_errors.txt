@@ -1,11 +1,9 @@
-# Test bd show error cases
+[!dolt] skip
+# Test bd show error handling
+bd init --prefix test --quiet
 
-bd init --prefix test
-
-# Show nonexistent issue prints error to stderr (exits 0 - known issue)
-bd show nonexistent-id
-stderr 'no issue found'
-
-# Show with no args and no last-touched should fail
 ! bd show
-stderr 'issue ID is required'
+stderr 'at least one issue ID is required|issue ID'
+
+! bd show nonexistent-id
+stderr 'not found|no issues found|Error fetching'

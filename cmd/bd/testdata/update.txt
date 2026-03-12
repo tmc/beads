@@ -1,18 +1,16 @@
-# Test bd update command
-bd init --prefix test
+[!dolt] skip
+# Test bd update with JSON verification
+bd init --prefix test --quiet
+bd create 'Issue to update' --description 'Original context' --json
+extractid ISSUE
+bd update $ISSUE --status in_progress --assignee alice --add-label urgent --notes 'Started work' --json
+jq '.[0].status'
+stdout '"in_progress"'
+jq '.[0].assignee'
+stdout '"alice"'
 
-# Create issue and capture its hash ID
-bd create 'Issue to update'
-cp stdout issue.txt
-grep 'Created issue: test-' issue.txt
-
-# Extract ID using grep
-exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
-
-# Claim the issue (sets status to in_progress)
-exec sh -c 'bd update $(cat issue_id.txt) --claim'
-stdout 'Updated issue:'
-
-# Verify the update
-exec sh -c 'bd show $(cat issue_id.txt)'
-stdout 'in_progress'
+bd show $ISSUE --json
+jq '.[0].issue.notes'
+stdout '"Started work"'
+jq '.[0].labels[0]'
+stdout '"urgent"'

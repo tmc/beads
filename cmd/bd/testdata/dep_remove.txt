@@ -1,22 +1,15 @@
-# Test bd dep remove command
-bd init --prefix test
-
-# Create issues and capture their hash IDs
-bd create 'First issue'
-cp stdout first.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" first.txt > first_id.txt'
-
-bd create 'Second issue'
-cp stdout second.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" second.txt > second_id.txt'
-
-# Add dependency
-exec sh -c 'bd dep add $(cat second_id.txt) $(cat first_id.txt)'
+[!dolt] skip
+# Test bd dep remove unwires dependencies
+bd init --prefix test --quiet
+bd create 'First issue' --description 'Dependency source' --json
+extractid FIRST
+bd create 'Second issue' --description 'Depends on first' --json
+extractid SECOND
+bd dep add $SECOND $FIRST
 stdout 'Added dependency'
 
-# Remove dependency
-exec sh -c 'bd dep remove $(cat second_id.txt) $(cat first_id.txt)'
+bd dep remove $SECOND $FIRST
 stdout 'Removed dependency'
 
-# Verify dependency is gone
-exec sh -c 'bd show $(cat second_id.txt) | grep -v "Depends on"'
+bd show $SECOND
+! stdout 'DEPENDS ON'

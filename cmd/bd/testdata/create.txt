@@ -1,5 +1,19 @@
-# Test bd create command
-bd init --prefix test
-bd create 'Test issue'
-stdout 'Created issue:'
-stdout 'test-'
+[!dolt] skip
+# Test bd create command with structured fields
+bd init --prefix test --quiet
+bd create 'Test issue' --description 'Repro steps here' --type bug --priority 1 --labels critical,backend --json
+extractid ISSUE
+jq '.title'
+stdout '"Test issue"'
+jq '.issue_type'
+stdout '"bug"'
+jq '.priority'
+stdout '^1$'
+
+bd show $ISSUE --json
+jq '.[0].issue.title'
+stdout '"Test issue"'
+jq '.[0].issue.description'
+stdout '"Repro steps here"'
+jq '.[0].labels | length'
+stdout '^2$'

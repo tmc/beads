@@ -1,19 +1,14 @@
-# Test bd dep error cases
+[!dolt] skip
+# Test bd dep validation failures
+bd init --prefix test --quiet
+bd create 'First issue' --description 'Dependency source' --json
+extractid FIRST
 
-bd init --prefix test
+! bd dep add $FIRST nonexistent-id
+stderr 'not found|no issue found'
 
-bd create 'First issue'
-cp stdout first.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" first.txt > first_id.txt'
+! bd dep add $FIRST $FIRST
+stderr 'cannot depend on itself|cycle'
 
-# Add dependency with nonexistent blocker should fail
-! exec sh -c 'bd dep add $(cat first_id.txt) nonexistent-id'
-stderr 'no issue found'
-
-# Add self-dependency should fail
-! exec sh -c 'bd dep add $(cat first_id.txt) $(cat first_id.txt)'
-stderr 'cannot depend on itself'
-
-# dep tree on nonexistent issue should fail
 ! bd dep tree nonexistent-id
-stderr 'no issue found'
+stderr 'not found|no issue found'

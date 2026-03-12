@@ -1,3 +1,6 @@
 # Test bd version command
 bd version
 stdout 'bd version'
+
+bd --version
+stdout 'bd version'

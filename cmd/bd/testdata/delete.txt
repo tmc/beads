@@ -1,19 +1,15 @@
-# Test bd delete command
+[!dolt] skip
+# Test bd delete preview and force delete
+bd init --prefix test --quiet
+bd create 'Issue to delete' --description 'Delete me' --json
+extractid ISSUE
 
-bd init --prefix test
-
-# Create an issue
-bd create 'Issue to delete'
-cp stdout issue.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > id.txt'
-
-# Preview delete (no --force) - should show preview
-exec sh -c 'bd delete $(cat id.txt)'
+bd delete $ISSUE --dry-run
 stdout 'DELETE PREVIEW'
+stdout 'Would delete: 1 issue'
 
-# Actually delete
-exec sh -c 'bd delete $(cat id.txt) --force'
+bd delete $ISSUE --force
+stdout 'Deleted'
 
-# Verify it's gone - show should print error to stderr
-exec sh -c 'bd show $(cat id.txt)'
-stderr 'no issue found'
+! bd show $ISSUE
+stderr 'not found|no issues found|Issue .* not found'

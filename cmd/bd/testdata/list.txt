@@ -1,7 +1,21 @@
-# Test bd list command
-bd init --prefix test
-bd create 'First issue'
-bd create 'Second issue'
-bd list
-stdout 'First issue'
-stdout 'Second issue'
+[!dolt] skip
+# Test bd list filtering and JSON output
+bd init --prefix test --quiet
+bd create 'Open task' --description 'Open work item' --type task --priority 2 --json
+extractid OPEN
+bd create 'Closed task' --description 'Already done' --type task --priority 3 --json
+extractid CLOSED
+bd close $CLOSED --reason 'Done'
+
+bd list --json
+jq 'length'
+stdout '^1$'
+jq '.[0].title'
+stdout '"Open task"'
+
+bd list --status all --json
+jq 'length'
+stdout '^2$'
+
+bd list --status closed
+stdout 'Closed task'

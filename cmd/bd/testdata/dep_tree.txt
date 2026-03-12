@@ -1,18 +1,13 @@
-# Test bd dep tree command
-bd init --prefix test
+[!dolt] skip
+# Test bd dep tree renders the dependency graph
+bd init --prefix test --quiet
+bd create 'Root issue' --description 'Tree root' --json
+extractid ROOT
+bd create 'Child issue' --description 'Tree child' --json
+extractid CHILD
 
-# Create issues and capture their hash IDs
-bd create 'Root issue'
-cp stdout root.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" root.txt > root_id.txt'
+bd dep add $CHILD $ROOT
 
-bd create 'Child issue'
-cp stdout child.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" child.txt > child_id.txt'
-
-# Add dependency: child depends on root
-exec sh -c 'bd dep add $(cat child_id.txt) $(cat root_id.txt)'
-
-# Show dependency tree for root
-exec sh -c 'bd dep tree $(cat root_id.txt)'
-stdout 'test-'
+bd dep tree $ROOT
+stdout 'Root issue'
+stdout 'Child issue'

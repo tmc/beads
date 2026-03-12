@@ -1,13 +1,8 @@
-# Test bd lint command
+[!dolt] skip
+# Test bd lint catches incomplete templates
+bd init --prefix test --quiet
+bd create 'Bug without sections' --description 'too short' --type bug
+bd create 'Simple chore' --description 'chores are less strict' --type chore
 
-bd init --prefix test
-
-# Create a bug without required sections - should have warnings
-bd create 'Bug without sections' --type bug
-
-# Create a chore - no required sections
-bd create 'Simple chore' --type chore
-
-# Lint all issues - bug should have warnings
 ! bd lint
 stdout 'Bug without sections'

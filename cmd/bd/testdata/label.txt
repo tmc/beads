@@ -1,35 +1,25 @@
-# Test bd label command
+[!dolt] skip
+# Test bd label add/list/remove flows
+bd init --prefix test --quiet
+bd create 'Issue for labels' --description 'Label target' --json
+extractid ISSUE
 
-bd init --prefix test
-
-# Create an issue
-bd create 'Issue for labels'
-cp stdout issue.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > id.txt'
-
-# Add a label
-exec sh -c 'bd label add $(cat id.txt) backend'
+bd label add $ISSUE backend
 stdout 'Added label'
 
-# List labels
-exec sh -c 'bd label list $(cat id.txt)'
-stdout 'backend'
+bd label add $ISSUE urgent
+stdout 'Added label'
 
-# Add another label
-exec sh -c 'bd label add $(cat id.txt) urgent'
-
-# Verify both labels
-exec sh -c 'bd label list $(cat id.txt)'
+bd label list $ISSUE
 stdout 'backend'
 stdout 'urgent'
 
-# Remove a label
-exec sh -c 'bd label remove $(cat id.txt) urgent'
+bd label remove $ISSUE urgent
+stdout 'Removed label'
 
-# Verify removal - should still have backend
-exec sh -c 'bd label list $(cat id.txt)'
+bd label list $ISSUE
 stdout 'backend'
+! stdout 'urgent'
 
-# List all unique labels
 bd label list-all
 stdout 'backend'

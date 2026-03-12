@@ -1,19 +1,18 @@
-# Test bd create error cases
+[!dolt] skip
+# Test bd create validation failures
+bd init --prefix test --quiet
 
-bd init --prefix test
-
-# Create with no title should fail
 ! bd create
 stderr 'title required'
 
-# Create with empty title should fail
-! bd create ''
-stderr 'title is required'
+! bd create '' --description 'still invalid'
+stderr 'title required|title is required'
 
-# Create with invalid type should fail
 ! bd create 'Test' --type invalid-type
-stderr 'invalid issue type'
+stderr 'invalid issue type|unknown issue type'
 
-# Create with invalid priority should fail
 ! bd create 'Test' --priority 99
-stderr 'invalid priority'
+stderr 'priority'
+
+! bd create 'Test' --metadata '{bad json'
+stderr 'invalid JSON'

@@ -1,5 +1,15 @@
-# Test bd ready command
-bd init --prefix test
-bd create 'Ready issue'
+[!dolt] skip
+# Test bd ready excludes blocked work
+bd init --prefix test --quiet
+bd create 'Ready issue' --description 'Can be worked now' --json
+extractid READY
+bd create 'Blocking issue' --description 'Dependency root' --json
+extractid BLOCKER
+bd create 'Blocked issue' --description 'Must wait' --json
+extractid BLOCKED
+bd dep add $BLOCKED $BLOCKER
+
 bd ready
-stdout 'Ready'
+stdout 'Ready issue'
+stdout 'Blocking issue'
+! stdout 'Blocked issue'

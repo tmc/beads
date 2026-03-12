@@ -1,26 +1,23 @@
-# Test bd config command
+[!dolt] skip
+# Test bd config set/get/list/unset
+bd init --prefix test --quiet
 
-bd init --prefix test
-
-# Set a config value
 bd config set jira.url 'https://example.atlassian.net'
 stdout 'Set jira.url'
 
-# Get the config value
 bd config get jira.url
 stdout 'https://example.atlassian.net'
 
-# List all config
+bd config set jira.project 'TEST'
+stdout 'Set jira.project'
+
 bd config list
 stdout 'jira.url'
-
-# Set another value
-bd config set jira.project 'TEST'
-
-# Unset a value
-bd config unset jira.url
-
-# Verify it's gone - list should not show the URL
-bd config list
-! stdout 'example.atlassian.net'
 stdout 'jira.project'
+
+bd config unset jira.url
+stdout 'Unset jira.url'
+
+bd config list
+stdout 'jira.project'
+! stdout 'example.atlassian.net'

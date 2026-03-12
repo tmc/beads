@@ -1,18 +1,21 @@
-# Test bd stats command
-bd init --prefix test
+[!dolt] skip
+# Test bd status and bd stats alias
+bd init --prefix test --quiet
+bd create 'First issue' --description 'Open issue' --json
+extractid FIRST
+bd create 'Second issue' --description 'Will close' --json
+extractid SECOND
+bd close $SECOND --reason Done
 
-# Create issues
-bd create 'First issue'
-cp stdout first.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" first.txt > first_id.txt'
-
-bd create 'Second issue'
-
-# Close one issue
-exec sh -c 'bd close $(cat first_id.txt)'
-
-# Check stats
-bd stats
+bd status
 stdout 'Total Issues:'
 stdout 'Open:'
 stdout 'Closed:'
+
+bd stats --json
+jq '.summary.total_issues'
+stdout '^2$'
+jq '.summary.open_issues'
+stdout '^1$'
+jq '.summary.closed_issues'
+stdout '^1$'

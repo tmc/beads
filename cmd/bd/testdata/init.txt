@@ -1,16 +1,13 @@
-# Test bd init command
-bd init --prefix test
-stdout 'initialized successfully'
-exists .beads/beads.db
+[!dolt] skip
+# Test bd init command against the Dolt backend
+bd init --prefix test --quiet
 exists .beads/metadata.json
-exists .beads/.gitignore
-grep '^\*\.db$' .beads/.gitignore
-grep '^\*\.db-journal$' .beads/.gitignore
-grep '^\*\.db-wal$' .beads/.gitignore
-grep '^\*\.db-shm$' .beads/.gitignore
-grep '^daemon\.log$' .beads/.gitignore
-grep '^daemon\.pid$' .beads/.gitignore
-grep '^bd\.sock$' .beads/.gitignore
-grep '^!\*\.jsonl$' .beads/.gitignore
-grep '^!metadata\.json$' .beads/.gitignore
-grep '^!config\.json$' .beads/.gitignore
+exists .beads/config.yaml
+exists .beads/dolt
+grep '"backend"' .beads/metadata.json
+grep 'dolt' .beads/metadata.json
+grep '"dolt_mode"' .beads/metadata.json
+grep 'server' .beads/metadata.json
+grep 'issue-prefix' .beads/config.yaml
+grep 'test' .beads/config.yaml
+! exists .beads/beads.db

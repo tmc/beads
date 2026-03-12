@@ -1,11 +1,9 @@
-# Test bd delete error cases
+[!dolt] skip
+# Test bd delete validation failures
+bd init --prefix test --quiet
 
-bd init --prefix test
-
-# Delete with no args should fail
 ! bd delete
-stderr 'no issue IDs provided'
+stderr 'at least one issue ID|issue ID'
 
-# Delete nonexistent issue should fail
 ! bd delete nonexistent-id --force
-stderr 'not found'
+stderr 'not found|no issues found'

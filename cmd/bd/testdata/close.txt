@@ -1,15 +1,14 @@
-# Test bd close command
-bd init --prefix test
+[!dolt] skip
+# Test bd close and close_reason persistence
+bd init --prefix test --quiet
+bd create 'Issue to close' --description 'Ready to close' --json
+extractid ISSUE
 
-# Create issue and capture its hash ID
-bd create 'Issue to close'
-cp stdout issue.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
+bd close $ISSUE --reason Fixed
+stdout 'Closed'
 
-# Close the issue
-exec sh -c 'bd close $(cat issue_id.txt) --reason Fixed'
-stdout 'Closed test-'
-
-# Verify it's closed
-exec sh -c 'bd show $(cat issue_id.txt)'
-stdout 'closed'
+bd show $ISSUE --json
+jq '.[0].issue.status'
+stdout '"closed"'
+jq '.[0].issue.close_reason'
+stdout '"Fixed"'

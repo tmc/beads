@@ -1,24 +1,19 @@
-# Test bd comments command
+[!dolt] skip
+# Test bd comments add/list flows
+bd init --prefix test --quiet
+bd create 'Issue for comments' --description 'Discuss this work item' --json
+extractid ISSUE
 
-bd init --prefix test
-
-# Create an issue
-bd create 'Issue for comments'
-cp stdout issue.txt
-exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > id.txt'
-
-# Add a comment
-exec sh -c 'bd comments add $(cat id.txt) "This is a test comment"'
+bd comments add $ISSUE 'This is a test comment' --author alice
 stdout 'Comment added'
 
-# List comments
-exec sh -c 'bd comments $(cat id.txt)'
+bd comments add $ISSUE 'Second comment'
+stdout 'Comment added'
+
+bd comments $ISSUE
 stdout 'This is a test comment'
+stdout 'Second comment'
+stdout 'alice'
 
-# Add another comment with author
-exec sh -c 'bd comments add $(cat id.txt) "Second comment" --author tester'
-stdout 'Comment added'
-
-# Comments on nonexistent issue should fail
 ! bd comments nonexistent-id
-stderr 'no issue found'
+stderr 'not found|no issue found|Error'

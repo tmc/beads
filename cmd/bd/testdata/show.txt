@@ -1,16 +1,23 @@
-# Test bd show command
-bd init --prefix test
+[!dolt] skip
+# Test bd show in text and JSON modes
+bd init --prefix test --quiet
+bd create 'Test issue for show' --description 'Detailed context' --json
+extractid ISSUE
+bd label add $ISSUE backend
+stdout 'Added label'
+bd comments add $ISSUE 'First comment' --author alice
+stdout 'Comment added'
 
-# Create issue and capture its hash ID
-bd create 'Test issue for show'
-cp stdout issue.txt
-grep 'Created issue: test-' issue.txt
-
-# Extract ID using grep
-exec sh -c 'grep -oE "test-[a-z0-9]+" issue.txt > issue_id.txt'
-
-# Show the issue
-exec sh -c 'bd show $(cat issue_id.txt)'
+bd show $ISSUE
 stdout 'Test issue for show'
-stdout 'Status:'
-stdout 'Priority:'
+stdout 'DESCRIPTION'
+stdout 'backend'
+stdout 'alice'
+
+bd show $ISSUE --json
+jq '.[0].issue.id'
+stdout 'test-[a-z0-9]+'
+jq '.[0].comments | length'
+stdout '^1$'
+jq '.[0].labels[0]'
+stdout '"backend"'
