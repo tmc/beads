@@ -1,0 +1,32 @@
+[!dolt] skip
+# Test bd duplicate and bd supersede close the old issue and link it
+bd init --prefix test --quiet
+bd create 'Canonical bug' --description 'Primary report' --type bug --json
+extractid CANONICAL
+bd create 'Duplicate bug' --description 'Secondary report' --type bug --json
+extractid DUPLICATE
+
+bd duplicate $DUPLICATE --of $CANONICAL --json
+jq '.canonical'
+stdout "$CANONICAL"
+jq '.status'
+stdout '"closed"'
+
+bd show $DUPLICATE --json
+jq '.[0].issue.status'
+stdout '"closed"'
+
+bd create 'Replacement spec' --description 'New version' --type decision --json
+extractid REPLACEMENT
+bd create 'Old spec' --description 'Superseded version' --type decision --json
+extractid OLD
+
+bd supersede $OLD --with $REPLACEMENT --json
+jq '.replacement'
+stdout "$REPLACEMENT"
+jq '.status'
+stdout '"closed"'
+
+bd show $OLD --json
+jq '.[0].issue.status'
+stdout '"closed"'

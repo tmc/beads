@@ -1,0 +1,16 @@
+[!dolt] skip
+# Test bd children includes closed children
+bd init --prefix test --quiet
+bd create 'Parent epic' --description 'Owns child work' --type epic --json
+extractid PARENT
+bd create 'Child one' --description 'Open child' --parent $PARENT --json
+extractid CHILD1
+bd create 'Child two' --description 'Will be closed' --parent $PARENT --json
+extractid CHILD2
+bd close $CHILD2 --reason Done
+
+bd children $PARENT --json
+jq 'length'
+stdout '^2$'
+stdout 'Child one'
+stdout 'Child two'

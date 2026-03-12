@@ -1,0 +1,27 @@
+[!dolt] skip
+# Test bd set-state, bd state, and bd state list
+bd init --prefix test --quiet
+bd create 'Witness issue' --description 'Carries operational state' --json
+extractid ISSUE
+
+bd state $ISSUE patrol
+stdout 'no patrol state set'
+
+bd set-state $ISSUE patrol=active --reason 'Patrol enabled' --json
+jq '.changed'
+stdout 'true'
+jq '.new_value'
+stdout '"active"'
+jq '.event_id'
+stdout 'test-'
+
+bd state $ISSUE patrol --json
+jq '.value'
+stdout '"active"'
+
+bd state list $ISSUE --json
+jq '.states.patrol'
+stdout '"active"'
+
+bd set-state $ISSUE patrol=active
+stdout 'no change'

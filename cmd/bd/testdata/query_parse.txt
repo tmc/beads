@@ -1,0 +1,13 @@
+[!dolt] skip
+# Test bd query parser-only mode
+bd init --prefix test --quiet
+bd query 'status=open AND priority<=2' --parse-only
+stdout '^Parsed query:'
+stdout 'status'
+stdout 'priority'
+
+! bd query
+stderr 'query expression is required'
+
+! bd query 'status===' --parse-only
+stderr 'parsing query'

@@ -1,0 +1,24 @@
+# Test bd bootstrap dry-run plans without a live database
+mkdir initcase
+cd initcase
+mkdir .beads
+cp /dev/null .beads/config.yaml
+
+bd bootstrap --dry-run --json
+jq '.action'
+stdout '"init"'
+jq '.has_existing'
+stdout 'false'
+jq '.beads_dir | type'
+stdout '"string"'
+
+cd ..
+mkdir restorecase
+cd restorecase
+sh -c 'mkdir -p .beads/backup && : > .beads/config.yaml && : > .beads/backup/issues.jsonl'
+
+bd bootstrap --dry-run --json
+jq '.action'
+stdout '"restore"'
+jq '.backup_dir | type'
+stdout '"string"'

@@ -1,0 +1,19 @@
+[!dolt] skip
+# Test bd count basic and grouped output
+bd init --prefix test --quiet
+bd create 'Bug issue' --description 'Needs fixing' --type bug --priority 1
+bd create 'Feature issue' --description 'Needs building' --type feature --priority 2
+
+bd count
+stdout '^2$'
+
+bd count --status open
+stdout '^2$'
+
+bd count --by-type
+stdout 'Total: 2'
+stdout 'bug: 1'
+stdout 'feature: 1'
+
+! bd count --by-status --by-type
+stderr 'only one --by-'

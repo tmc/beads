@@ -1,0 +1,16 @@
+[!dolt] skip
+# Test bd reopen command
+bd init --prefix test --quiet
+bd create 'Issue to reopen' --description 'Will be reopened' --json
+extractid ISSUE
+bd close $ISSUE --reason Done
+stdout 'Closed'
+
+bd reopen $ISSUE --reason 'Needs more work'
+stdout 'Reopened'
+
+bd show $ISSUE --json
+jq '.[0].issue.status'
+stdout '"open"'
+jq '.[0].comments | length'
+stdout '^1$'

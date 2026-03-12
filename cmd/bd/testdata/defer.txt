@@ -1,0 +1,19 @@
+[!dolt] skip
+# Test bd defer and undefer change ready visibility
+bd init --prefix test --quiet
+bd create 'Deferred task' --description 'Park this until later' --json
+extractid ISSUE
+
+bd defer $ISSUE --until tomorrow --json
+jq '.[0].status'
+stdout '"deferred"'
+
+bd ready
+! stdout 'Deferred task'
+
+bd undefer $ISSUE --json
+jq '.[0].status'
+stdout '"open"'
+
+bd ready
+stdout 'Deferred task'

@@ -1,0 +1,28 @@
+[!dolt] skip
+# Test bd todo add, list, and done flows
+bd init --prefix test --quiet
+
+bd todo add 'Write docs' --description 'Capture the operator workflow' --json
+extractid TODO1
+jq '.issue_type'
+stdout '"task"'
+
+bd todo add 'Ship patch' --priority 1 --json
+extractid TODO2
+jq '.priority'
+stdout '^1$'
+
+bd todo list --json
+jq 'length'
+stdout '^2$'
+
+bd todo done $TODO1 --reason 'Completed in docs pass'
+stdout 'Closed'
+
+bd todo list --json
+jq 'length'
+stdout '^1$'
+
+bd todo list --all --json
+jq 'length'
+stdout '^2$'

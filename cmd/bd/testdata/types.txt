@@ -1,0 +1,20 @@
+[!dolt] skip
+# Test bd types includes built-in and configured custom types
+bd init --prefix test --quiet
+
+bd types --json
+jq '.core_types | length'
+stdout '^6$'
+jq '[.core_types[].name] | index("bug")'
+stdout '^[0-9]+$'
+jq '[.core_types[].name] | index("decision")'
+stdout '^[0-9]+$'
+
+bd config set types.custom 'incident,runbook'
+stdout 'Set types.custom'
+
+bd types --json
+jq '.custom_types | length'
+stdout '^2$'
+jq '.custom_types[0]'
+stdout '"incident"'

@@ -1,0 +1,16 @@
+[!dolt] skip
+# Test bd info reports issue counts and schema details
+bd init --prefix test --quiet
+bd create 'Info target' --description 'Seed database state'
+
+bd info --json
+jq '.mode'
+stdout '"direct"'
+jq '.issue_count'
+stdout '^1$'
+
+bd info --schema --json
+jq '.schema.tables | length'
+stdout '^[1-9][0-9]*$'
+jq '.schema.detected_prefix'
+stdout '"test"'

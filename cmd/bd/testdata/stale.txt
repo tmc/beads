@@ -1,0 +1,14 @@
+[!dolt] skip
+# Test bd stale empty results and validation failures
+bd init --prefix test --quiet
+bd create 'Fresh issue' --description 'Just created'
+
+bd stale --days 30 --json
+jq 'length'
+stdout '^0$'
+
+! bd stale --days 0
+stderr '--days must be at least 1'
+
+! bd stale --status someday
+stderr 'invalid status'

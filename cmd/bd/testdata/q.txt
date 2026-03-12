@@ -1,0 +1,23 @@
+[!dolt] skip
+# Test bd q creates issues with scripting-friendly output
+bd init --prefix test --quiet
+
+bd q 'Quick capture task'
+stdout '^test-[a-z0-9]{3,}(\\.[0-9]+)?$'
+
+bd show $ID --json
+jq '.[0].issue.title'
+stdout '"Quick capture task"'
+jq '.[0].issue.issue_type'
+stdout '"task"'
+
+bd q 'Escalated bug' --type bug --priority 1 --labels urgent,backend
+stdout '^test-[a-z0-9]{3,}(\\.[0-9]+)?$'
+
+bd show $ID --json
+jq '.[0].issue.issue_type'
+stdout '"bug"'
+jq '.[0].issue.priority'
+stdout '^1$'
+jq '.[0].labels | length'
+stdout '^2$'

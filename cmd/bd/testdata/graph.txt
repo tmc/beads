@@ -1,0 +1,19 @@
+[!dolt] skip
+# Test bd graph renders dependency structure in dot and JSON forms
+bd init --prefix test --quiet
+bd create 'Base task' --description 'Must go first' --json
+extractid BASE
+bd create 'Follow-up task' --description 'Depends on base' --json
+extractid FOLLOW
+bd dep add $FOLLOW $BASE
+
+bd graph --dot $FOLLOW
+stdout 'digraph'
+stdout "$FOLLOW"
+stdout "$BASE"
+
+bd graph --json $FOLLOW
+jq '.root.id'
+stdout "$FOLLOW"
+jq '.issues | length'
+stdout '^2$'

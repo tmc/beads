@@ -1,0 +1,24 @@
+[!dolt] skip
+# Test bd query handles boolean filters and JSON output
+bd init --prefix test --quiet
+bd create 'Urgent login bug' --description 'OAuth login fails' --type bug --priority 0 --labels urgent,backend
+bd create 'Routine cleanup' --description 'Delete old temp files' --type chore --priority 3
+extractid CHORE
+bd close $CHORE --reason Done
+
+bd query 'type=bug AND label=urgent' --json
+jq 'length'
+stdout '^1$'
+jq '.[0].issue.title'
+stdout '"Urgent login bug"'
+
+bd query 'NOT status=closed' --json
+jq 'length'
+stdout '^1$'
+
+bd query 'status=closed' --json
+jq 'length'
+stdout '^1$'
+
+! bd query 'status==='
+stderr 'parsing query'
